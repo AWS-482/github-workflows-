@@ -1,0 +1,9 @@
+{
+  "name": "devops-mock-app",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "echo 'No lint issues found!'",
+    "test": "echo 'All unit tests passed successfully!'"
+  },
+  "dependencies": {}
+}
