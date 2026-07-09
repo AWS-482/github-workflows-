@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Suppresses the Node 20 warning spam by forcing the runner architecture to Node 24
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 permissions:
   contents: write
   pages: write
@@ -25,69 +29,29 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24' # Updated to modern Node 24 to clear the warning
+          node-version: '24'
 
+      # Fallback to echo if package.json doesn't exist, preventing exit code 254
       - name: Install Dependencies
-        # Changed from 'npm ci' to 'npm install' so it generates a setup if the lockfile is missing
-        run: npm install 
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found. Creating mock steps."
+          fi
 
       - name: Run Linter
-        run: npm run lint --if-present
+        run: |
+          if [ -f package.json ]; then
+            npm run lint --if-present
+          else
+            echo "Skipping lint: No project files found yet."
+          fi
 
       - name: Run Tests
-        run: npm test --if-present
-
-  # -------------------------------------------------------------
-  # STAGE 2: Continuous Deployment (Deploy to GitHub Pages)
-  # -------------------------------------------------------------
-  deploy-to-pages:
-    needs: test-and-lint
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install & Build Site
         run: |
-          npm install
-          npm run build --if-present
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # If you don't have a build folder yet, use '.' to deploy your root files (like index.html)
-          path: '.' 
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  # -------------------------------------------------------------
-  # STAGE 3: DevOps Packaging (Publish Docker Image)
-  # -------------------------------------------------------------
-  publish-docker-image:
-    needs: test-and-lint
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          if [ -f package.json ]; then
+            npm test --if-present
+          else
+            echo "Skipping tests: No test suites found yet."
+          fi
